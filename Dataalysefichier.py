@@ -89,8 +89,12 @@ def plot_liveness_distribution(data):
 
 # Note: Ceci nécessite que la colonne 'genre' soit présente dans vos données
 def plot_genre_distribution(data):
-    fig = px.bar(data['genre'].value_counts().reset_index(), x='index', y='genre', title='Genres Musicaux les Plus Communs')
-    st.plotly_chart(fig)
+    if 'genre' in data.columns and not data['genre'].isnull().all():
+        fig = px.bar(data['genre'].value_counts().reset_index(), x='index', y='genre', title='Genres Musicaux les Plus Communs')
+        st.plotly_chart(fig)
+    else:
+        st.error("The 'genre' column is missing or empty.")
+
 
 
 def plot_mode_distribution(data):

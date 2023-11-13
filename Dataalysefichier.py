@@ -27,7 +27,7 @@ def load_and_train():
     if 'data' not in st.session_state or 'model' not in st.session_state:
         #%% TRAITEMENT DE LA DONNEE
         columns_to_load = ["name","artists","daily_rank","daily_movement","weekly_movement","country","snapshot_date","popularity","is_explicit","duration_ms","album_name","album_release_date","danceability","energy","key","loudness","mode","speechiness","acousticness","instrumentalness","liveness","valence","tempo","time_signature"] 
-        st.session_state['data'] = pd.read_csv("C://Users//henri//Downloads//archive (4)//universal_top_spotify_songs.csv", usecols=columns_to_load,sep=",")
+        st.session_state['data'] = pd.read_csv("universal_top_spotify_songs.csv", usecols=columns_to_load,sep=",")
         st.session_state['features'] = st.session_state['data'][['danceability', 'energy', 'key', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'time_signature', 'mode']]
         st.session_state['target'] = np.random.choice(['Rock', 'Pop', 'Jazz', 'Hip-Hop'], size=len(st.session_state['data']))
         

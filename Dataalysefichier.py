@@ -358,7 +358,7 @@ def main():
         slope, intercept, r_value, p_value, std_err = stats.linregress(st.session_state['data']['valence'], st.session_state['data']['popularity'])
         regression_line = (slope, intercept)
     except:
-        st.write("Problem with graph")
+        regression_line = 0
     try:
         # 8. Mean difference in days between snapshot date and album release date
         st.session_state['data']['days_between'] = (st.session_state['data']['snapshot_date'] - st.session_state['data']['album_release_date']).dt.days

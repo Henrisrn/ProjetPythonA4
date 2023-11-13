@@ -174,20 +174,63 @@ def visualisation(data):
     ).add_to(m)
 
     folium_static(m)
-    plot_popularity_distribution(data)
-    plot_energy_by_country(data)
-    plot_danceability_vs_energy(data)
-    plot_duration_distribution(data)
-    plot_loudness_boxplot(data)
-    plot_feature_correlation(data)
-    plot_mode_distribution(data)
-    plot_genre_distribution(data)
-    plot_liveness_distribution(data)
-    plot_valence_vs_duration(data)
-    plot_common_key(data)
-    plot_explicit_proportion(data)
-    plot_time_signature_distribution(data)
-    plot_valence_popularity_regression(data)
+    try:
+        plot_popularity_distribution(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_energy_by_country(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_danceability_vs_energy(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_duration_distribution(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_loudness_boxplot(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_feature_correlation(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_mode_distribution(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_genre_distribution(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_liveness_distribution(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_valence_vs_duration(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_common_key(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_explicit_proportion(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_time_signature_distribution(data)
+    except:
+        st.write("Problem with graph")
+    try:
+        plot_valence_popularity_regression(data)
+    except:
+        st.write("Problem with graph")
+    
     data['popularity_moving_average'] = data['popularity'].rolling(window=7).mean()
 
     # Create a Bokeh chart (e.g., popularity trend)

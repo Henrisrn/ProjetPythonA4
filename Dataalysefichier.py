@@ -9,11 +9,20 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
 import os
 os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
+# Set up Spotify API credentials
+client_id = '23c4e2e1e192402d82e775935d44042f'
+client_secret = 'c864cd4357e7421aae7ff19ac6b6fcea'
 
-data = pd.read_csv("C://Users//henri//Downloads//archive (4)//universal_top_spotify_songs.csv",sep=",")
+sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
+
+data = pd.read_csv("universal_top_spotify_songs.csv",sep=",")
+
 
 # %%
 for col in ['danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo']:
@@ -149,6 +158,8 @@ full_data_predictions = clf.predict(scaler.transform(features))
 
 # Add the predictions to the DataFrame
 data['genre'] = full_data_predictions
+
+
 # %%
 def plot_popularity_distribution(data):
     plt.hist(data['popularity'], bins=20, color='blue')

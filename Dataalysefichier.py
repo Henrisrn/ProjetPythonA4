@@ -328,67 +328,112 @@ def statistics(results):
 def main():
     st.sidebar.title('Navigation')
     choice = st.sidebar.radio('Choisir une page:', ['Accueil', 'Statistiques', 'Visualisations'])
-    mean_popularity = st.session_state['data']['popularity'].mean()
-    median_duration = st.session_state['data']['duration_ms'].median()
+    try:
+        mean_popularity = st.session_state['data']['popularity'].mean()
+        median_duration = st.session_state['data']['duration_ms'].median()
+    except:
+        mean_popularity = 0
+        median_duration = 0
+    try:
+        # 3. Mode of time signature
+        mode_time_signature = st.session_state['data']['time_signature'].mode()[0]
+    except:
+        mode_time_signature = 0
+    try:
+        range_loudness = st.session_state['data']['loudness'].max() - st.session_state['data']['loudness'].min()
+    except:
+        range_loudness = 0
+    try:
+        # 5. Standard deviation of tempo
+        std_tempo = st.session_state['data']['tempo'].std()
+    except:
+        std_tempo = 0
+    try:
+        # 6. Correlation between danceability and energy
+        correlation_dance_energy = st.session_state['data']['danceability'].corr(st.session_state['data']['energy'])
+    except:
+        correlation_dance_energy = 0
+    try:
+        # 7. Regression line for valence and popularity
+        slope, intercept, r_value, p_value, std_err = stats.linregress(st.session_state['data']['valence'], st.session_state['data']['popularity'])
+        regression_line = (slope, intercept)
+    except:
+        st.write("Problem with graph")
+    try:
+        # 8. Mean difference in days between snapshot date and album release date
+        st.session_state['data']['days_between'] = (st.session_state['data']['snapshot_date'] - st.session_state['data']['album_release_date']).dt.days
+        mean_days_between = st.session_state['data']['days_between'].mean()
+    except:
+        mean_days_between = 0
+    try:
+        # 9. Check if explicit content has higher popularity
+        explicit_popularity = st.session_state['data'][st.session_state['data']['is_explicit']]['popularity'].mean()
+        non_explicit_popularity = st.session_state['data'][~st.session_state['data']['is_explicit']]['popularity'].mean()
+        explicit_more_popular = explicit_popularity > non_explicit_popularity
+    except:
+        explicit_popularity = 0
+        non_explicit_popularity = 0
+        explicit_more_popular = 0
+    try:
+        # 10. Average speechiness for tracks with time signature of 4
+        avg_speechiness_time_sig_4 = st.session_state['data'][st.session_state['data']['time_signature'] == 4]['speechiness'].mean()
+    except:
+        avg_speechiness_time_sig_4 = 0
+    try:
+        # 11. Percentage of tracks with a danceability score above 0.7
+        perc_danceable_tracks = (st.session_state['data']['danceability'] > 0.7).mean() * 100
+    except:
+        perc_danceable_tracks = 0
+    try:
+        # 12. Most common key in the dataset
+        common_key = st.session_state['data']['key'].mode()[0]
+    except:
+        common_key = 0
+    try:
+        # 13. Difference in mean loudness between explicit and non-explicit tracks
+        mean_loudness_explicit = st.session_state['data'][st.session_state['data']['is_explicit']]['loudness'].mean()
+        mean_loudness_non_explicit = st.session_state['data'][~st.session_state['data']['is_explicit']]['loudness'].mean()
+        diff_mean_loudness_explicitness = mean_loudness_explicit - mean_loudness_non_explicit
+    except:
+        mean_loudness_explicit = 0
+        mean_loudness_non_explicit = 0
+        diff_mean_loudness_explicitness = 0
+    try:
+        # 14. Energy levels across different countries
+        energy_by_country = st.session_state['data'].groupby('country')['energy'].mean().to_dict()
+    except:
+        energy_by_country = 0
+    try:
+        # 15. Predicted popularity score from valence using the regression model
+        st.session_state['data']['predicted_popularity'] = intercept + slope * st.session_state['data']['valence']
+    except:
+        st.write("Problem with graph")
+    try:
+        # 16. Checking for any instrumental tracks
+        instrumental_tracks = st.session_state['data']['instrumentalness'].apply(lambda x: True if x > 0.5 else False).any()
+    except:
+        instrumental_tracks = 0
+    try:
+        # 17. Variance in danceability across the dataset
+        variance_danceability = st.session_state['data']['danceability'].var()
+    except:
+        variance_danceability = 0
+    try:
+        # 18. Find the track with the highest liveness
+        track_highest_liveness = st.session_state['data'].loc[st.session_state['data']['liveness'].idxmax(), 'name']
+    except:
+        track_highest_liveness = 0
+    try:
+        # 19. Determine if higher valence is associated with shorter duration
+        correlation_valence_duration = st.session_state['data']['valence'].corr(st.session_state['data']['duration_ms'])
+    except:
+        correlation_valence_duration = 0
+    try:
+        # 20. Proportion of tracks in major mode (mode=1)
+        major_mode_proportion = (st.session_state['data']['mode'] == 1).mean()
+    except:
+        major_mode_proportion = 0
     
-    # 3. Mode of time signature
-    mode_time_signature = st.session_state['data']['time_signature'].mode()[0]
-    range_loudness = st.session_state['data']['loudness'].max() - st.session_state['data']['loudness'].min()
-
-    # 5. Standard deviation of tempo
-    std_tempo = st.session_state['data']['tempo'].std()
-
-    # 6. Correlation between danceability and energy
-    correlation_dance_energy = st.session_state['data']['danceability'].corr(st.session_state['data']['energy'])
-
-    # 7. Regression line for valence and popularity
-    slope, intercept, r_value, p_value, std_err = stats.linregress(st.session_state['data']['valence'], st.session_state['data']['popularity'])
-    regression_line = (slope, intercept)
-
-    # 8. Mean difference in days between snapshot date and album release date
-    st.session_state['data']['days_between'] = (st.session_state['data']['snapshot_date'] - st.session_state['data']['album_release_date']).dt.days
-    mean_days_between = st.session_state['data']['days_between'].mean()
-
-    # 9. Check if explicit content has higher popularity
-    explicit_popularity = st.session_state['data'][st.session_state['data']['is_explicit']]['popularity'].mean()
-    non_explicit_popularity = st.session_state['data'][~st.session_state['data']['is_explicit']]['popularity'].mean()
-    explicit_more_popular = explicit_popularity > non_explicit_popularity
-
-    # 10. Average speechiness for tracks with time signature of 4
-    avg_speechiness_time_sig_4 = st.session_state['data'][st.session_state['data']['time_signature'] == 4]['speechiness'].mean()
-
-    # 11. Percentage of tracks with a danceability score above 0.7
-    perc_danceable_tracks = (st.session_state['data']['danceability'] > 0.7).mean() * 100
-
-    # 12. Most common key in the dataset
-    common_key = st.session_state['data']['key'].mode()[0]
-
-    # 13. Difference in mean loudness between explicit and non-explicit tracks
-    mean_loudness_explicit = st.session_state['data'][st.session_state['data']['is_explicit']]['loudness'].mean()
-    mean_loudness_non_explicit = st.session_state['data'][~st.session_state['data']['is_explicit']]['loudness'].mean()
-    diff_mean_loudness_explicitness = mean_loudness_explicit - mean_loudness_non_explicit
-
-    # 14. Energy levels across different countries
-    energy_by_country = st.session_state['data'].groupby('country')['energy'].mean().to_dict()
-
-    # 15. Predicted popularity score from valence using the regression model
-    st.session_state['data']['predicted_popularity'] = intercept + slope * st.session_state['data']['valence']
-
-    # 16. Checking for any instrumental tracks
-    instrumental_tracks = st.session_state['data']['instrumentalness'].apply(lambda x: True if x > 0.5 else False).any()
-
-    # 17. Variance in danceability across the dataset
-    variance_danceability = st.session_state['data']['danceability'].var()
-
-    # 18. Find the track with the highest liveness
-    track_highest_liveness = st.session_state['data'].loc[st.session_state['data']['liveness'].idxmax(), 'name']
-
-    # 19. Determine if higher valence is associated with shorter duration
-    correlation_valence_duration = st.session_state['data']['valence'].corr(st.session_state['data']['duration_ms'])
-
-    # 20. Proportion of tracks in major mode (mode=1)
-    major_mode_proportion = (st.session_state['data']['mode'] == 1).mean()
-
     # Collecting the results to output
     results = {
         'Mean Popularity': mean_popularity,

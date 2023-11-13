@@ -22,7 +22,7 @@ os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 
 #%% MISE EN PLACE DE LA SESSION STREAMLIT POUR POUVOIR CHARGER ET ENTRAINER LE MODEL
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data
 def load_and_train():
     if 'data' not in st.session_state or 'model' not in st.session_state:
         #%% TRAITEMENT DE LA DONNEE
@@ -151,10 +151,8 @@ def visualisation(data):
     country_counts['count'] = country_counts['count'] - 1200
     country_counts = country_counts[country_counts['count'] > 0]
     # Initialize the map
-    print(country_counts)
     with open('custom.geo.json', 'r', encoding='utf-8') as f:
         geo_json_data = json.load(f)
-    print(geo_json_data['features'][0])
     # Initialize the map
     m = folium.Map(location=[20, 0], zoom_start=2)
     folium.GeoJson(geo_json_data).add_to(m)
@@ -199,8 +197,54 @@ def visualisation(data):
     
 
 def home():
-    st.title('Analyse Spotify')
-    st.write('Bienvenue dans l\'application d\'analyse des données Spotify.')
+    st.title('Spotify Data Analysis')
+    
+    # Using column layout for better control
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.image('starry-sky-8199764_1280.jpg', width=200)
+    
+    with col2:
+        st.subheader('Welcome to the Spotify Data Analysis App')
+        st.write('''
+        Dive into the fascinating world of music and discover patterns, 
+        trends, and insights from Spotify's top tracks.
+        ''')
+    
+    # Example of a dataframe snippet
+    st.write('Here is a glimpse into the dataset we are analyzing:')
+    st.dataframe(st.session_state['data'].head())
+
+    # Team presentation
+    st.subheader('Meet the Team')
+    st.markdown('''
+    - **Henri Serano**: Le big boss
+    - **Sara Thibierge**: La putchiste
+    - **Eloi Seidlitz**: Le mec du Nord
+    ''')
+
+    # You could also use st.image or st.markdown to add images of team members
+    
+    # For animations and more complex styling, you would need to inject custom HTML/CSS
+    st.markdown(
+        """
+        <style>
+        .reportview-container {
+            background: url("starry-sky-8199764_1280.jpg");
+            background-size: cover;
+        }
+        .big-font {
+            font-size:300% !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    # Using custom HTML to inject styles or even animations
+    st.markdown(
+        '<p class="big-font">Spotify Data Rocks!</p>', 
+        unsafe_allow_html=True
+    )
     
 # Fonction pour afficher les statistiques
 

@@ -15,6 +15,23 @@ from bokeh.plotting import figure
 from bokeh.models import HoverTool
 import json
 
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split,cross_val_score,RandomizedSearchCV
+from sklearn.ensemble import RandomForestClassifier,GradientBoostingClassifier
+from sklearn.preprocessing import MinMaxScaler
+import plotly.express as px
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+from random import randint
+from sklearn.neighbors import KNeighborsClassifier
+import numpy as np
+from sklearn.impute import SimpleImputer
+import re
+
 
 os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 
@@ -25,6 +42,7 @@ os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 @st.cache_data
 def load_and_train():
     if 'data' not in st.session_state or 'model' not in st.session_state:
+        genre_model = genre_prediction_model()
         #%% TRAITEMENT DE LA DONNEE
         columns_to_load = ["name","artists","daily_rank","daily_movement","weekly_movement","country","snapshot_date","popularity","is_explicit","duration_ms","album_name","album_release_date","danceability","energy","key","loudness","mode","speechiness","acousticness","instrumentalness","liveness","valence","tempo","time_signature"] 
         st.session_state['data'] = pd.read_csv("universal_top_spotify_songs.csv", usecols=columns_to_load,sep=",")
@@ -58,6 +76,87 @@ def load_and_train():
         st.session_state['data']['genre'] = st.session_state['clf'].predict(st.session_state['scaler'].transform(st.session_state['features']))
 
 
+def genre_prediction_model():
+    # Création de dataframes par genre
+    df_pop=pd.read_csv('pop_spotify.csv')
+    df_rock=pd.read_csv('rock_spotify.csv')
+    df_country=pd.read_csv('country_spotify.csv')
+    df_rb=pd.read_csv('r&b_spotify.csv')
+
+    # scale the data
+    col_names=df_pop.drop(['id','time_signature'],axis=1).columns
+    sc=MinMaxScaler()
+    df_pop=pd.DataFrame(sc.fit_transform(df_pop.drop(['id','time_signature'],axis=1)),columns=col_names)
+    df_rock=pd.DataFrame(sc.fit_transform(df_rock.drop(['id','time_signature'],axis=1)),columns=col_names)
+    df_rb=pd.DataFrame(sc.fit_transform(df_rb.drop(['id','time_signature'],axis=1)),columns=col_names)
+    df_hiphop=pd.DataFrame(sc.fit_transform(df_country.drop(['id','time_signature'],axis=1)),columns=col_names)
+    # attribute a number to each genre
+    df_pop['genre']=1
+    df_rock['genre']=2
+    df_rb['genre']=3
+    df_country['genre']=4
+
+    # create a concatenated dataframe
+    df=pd.concat([df_pop, df_rock, df_rb, df_country])
+
+    X = df.drop(['genre', 'id','time_signature'], axis=1)
+    y = df['genre']
+    # Replace NaN values with the mean of each column
+    imputer = SimpleImputer(strategy='mean')
+    X_imputed = imputer.fit_transform(X)
+    
+    # Entraînement du modèle de classification
+    X_train, X_test, y_train, y_test = train_test_split(X_imputed, y, test_size=0.2, random_state=42)
+    model = RandomForestClassifier()
+    model.fit(X_train, y_train)
+    return model
+
+def predict_genre_song(track_uri, sp,genre_predict_model):
+    track_uri = extract_track_id_from_uri(track_uri)
+    print(track_uri)
+    new_data_features = sp.audio_features(track_uri)
+    # extracted features
+    new_data = pd.DataFrame({
+        'energy': [new_data_features[0]['energy']],
+        'liveness': [new_data_features[0]['liveness']],
+        'tempo': [new_data_features[0]['tempo']],
+        'speechiness': [new_data_features[0]['speechiness']],
+        'acousticness': [new_data_features[0]['acousticness']],
+        'instrumentalness': [new_data_features[0]['instrumentalness']],
+        'danceability': [new_data_features[0]['danceability']],
+        'key': [new_data_features[0]['key']],
+        'duration_ms': [new_data_features[0]['duration_ms']],
+        'loudness': [new_data_features[0]['loudness']],
+        'valence': [new_data_features[0]['valence']],
+        'mode': [new_data_features[0]['mode']],
+    })
+    # Make predictions using the trained model
+    new_predictions_proba = genre_predict_model.predict_proba(new_data)
+    class_labels = genre_predict_model.classes_
+    genre_mapping = {1: 'Pop', 2: 'Rock', 3: 'R&B', 4: 'Country'}
+    
+    # Get the predicted genre label
+    predicted_genre_label = class_labels[np.argmax(new_predictions_proba)]
+
+    # Display the predicted genre using the mapping
+    predicted_genre = genre_mapping[predicted_genre_label]
+    # Format and display the probability scores as percentages
+    proba_percentage = [f"{genre_mapping[label]}: {proba*100:.2f}%" for label, proba in zip(class_labels, new_predictions_proba[0])]
+    return f'Predicted Genre: {predicted_genre}', f'Probability Scores:\n {"  ,  ".join(proba_percentage)}'
+        
+        
+def extract_track_id_from_uri(spotify_uri):
+    # Find the start and end indices of the track ID
+    start_index = spotify_uri.find('/track/') + len('/track/')
+    end_index = spotify_uri.find('?', start_index)
+
+    # Extract the track ID using slicing
+    track_id = spotify_uri[start_index:end_index]
+
+    # Return the transformed URI
+    return f'spotify:track:{track_id}' if track_id else None
+
+    
 
 def plot_valence_popularity_regression(data):
     fig = px.scatter(data, x='valence', y='popularity', trendline='ols', title='Valence et Popularité')
@@ -147,6 +246,9 @@ def plot_duration_distribution(data):
     fig = px.histogram(data, x=durations, nbins=bins, title=title)
     fig.update_layout(xaxis_title=f'Durée ({unit})', yaxis_title='Nombre de Morceaux')
     st.plotly_chart(fig)
+    
+    
+
 
 
 def visualisation(data):
@@ -243,7 +345,8 @@ def visualisation(data):
 
     
 
-def home():
+def home(sp):
+    genre_predict_model = genre_prediction_model()
     st.title('Spotify Data Analysis')
     
     # Using column layout for better control
@@ -266,9 +369,9 @@ def home():
     # Team presentation
     st.subheader('Meet the Team')
     st.markdown('''
-    - **Henri Serano**: Le big boss
-    - **Sara Thibierge**: La putchiste
-    - **Eloi Seidlitz**: Le mec du Nord
+    - **Henri Serano**: nul 1
+    - **Sara Thibierge**: grande dictatrice
+    - **Eloi Seidlitz**: nul 2
     ''')
 
     # You could also use st.image or st.markdown to add images of team members
@@ -286,15 +389,31 @@ def home():
         }
         </style>
         """, unsafe_allow_html=True)
-    
+
+    st.title('Want to Predict Your Music Genre?')
+    # Get user input for Spotify track URI
+    track_uri = st.text_input('Enter Spotify song link ex: https://open.spotify.com/intl-fr/track/0oks4FnzhNp5QPTZtoet7c?si=5e6ea8bf8d3746fa ')
+
+    # Add a button to trigger genre prediction
+    if st.button('Predict Genre'):
+        if track_uri is not "": 
+            # Use your existing code to make predictions
+            # Extract audio features for the new track using Spotify API
+            predicted_genre, proba_score = predict_genre_song(track_uri, sp,genre_predict_model)
+            st.success(predicted_genre)
+            st.success(proba_score)
+     
     # Using custom HTML to inject styles or even animations
     st.markdown(
-        '<p class="big-font">Spotify Data Rocks!</p>', 
+        '<p class="big-font">Spotify Data Rocks! </p>', 
         unsafe_allow_html=True
     )
+
+
+
+
     
 # Fonction pour afficher les statistiques
-
 def statistics(results):
     st.title('Statistiques des Données Spotify')
     st.write('Voici un résumé des statistiques clés issues de l\'analyse des données Spotify:')
@@ -326,6 +445,12 @@ def statistics(results):
     
 
 def main():
+    # Set up Spotify API credentials
+    client_id = '23c4e2e1e192402d82e775935d44042f'
+    client_secret = 'c864cd4357e7421aae7ff19ac6b6fcea'
+    client_credentials_manager = SpotifyClientCredentials(client_id,client_secret)
+    sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+
     st.sidebar.title('Navigation')
     choice = st.sidebar.radio('Choisir une page:', ['Accueil', 'Statistiques', 'Visualisations'])
     try:
@@ -459,7 +584,7 @@ def main():
     
     
     if choice == 'Accueil':
-        home()
+        home(sp)
     elif choice == 'Statistiques':
         statistics(results)
     elif choice == 'Visualisations':

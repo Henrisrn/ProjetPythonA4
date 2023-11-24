@@ -1,0 +1,11 @@
+pandas
+numpy
+scipy
+streamlit
+scikit-learn
+geopy
+folium
+streamlit-folium
+plotly
+bokeh
+fsspec

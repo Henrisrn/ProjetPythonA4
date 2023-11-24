@@ -14,10 +14,12 @@ import plotly.express as px
 from bokeh.plotting import figure
 from bokeh.models import HoverTool
 import json
+from datetime import datetime
 
 
 os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 
+st.set_page_config(layout="wide")
 
 
 #%% MISE EN PLACE DE LA SESSION STREAMLIT POUR POUVOIR CHARGER ET ENTRAINER LE MODEL
@@ -27,12 +29,12 @@ def load_and_train():
     if 'data' not in st.session_state or 'model' not in st.session_state:
         #%% TRAITEMENT DE LA DONNEE
         columns_to_load = ["name","artists","daily_rank","daily_movement","weekly_movement","country","snapshot_date","popularity","is_explicit","duration_ms","album_name","album_release_date","danceability","energy","key","loudness","mode","speechiness","acousticness","instrumentalness","liveness","valence","tempo","time_signature"] 
-        st.session_state['data'] = pd.read_csv("C://Users//henri//Downloads//archive (4)//universal_top_spotify_songs.csv", usecols=columns_to_load,sep=",")
+        st.session_state['data'] = pd.read_csv("universal_top_spotify_songs.csv", usecols=columns_to_load,sep=",")
         st.session_state['features'] = st.session_state['data'][['danceability', 'energy', 'key', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'time_signature', 'mode']]
         st.session_state['target'] = np.random.choice(['Rock', 'Pop', 'Jazz', 'Hip-Hop'], size=len(st.session_state['data']))
         
-        for col in ['danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo']:
-            st.session_state['data'][col] = st.session_state['data'][col].astype(str).str.replace(',', '.').astype(float)
+        for colgraph in ['danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo']:
+            st.session_state['data'][colgraph] = st.session_state['data'][colgraph].astype(str).str.replace(',', '.').astype(float)
         st.session_state['data']['snapshot_date'] = pd.to_datetime(st.session_state['data']['snapshot_date'])
         st.session_state['data']['album_release_date'] = pd.to_datetime(st.session_state['data']['album_release_date'])
 
@@ -59,90 +61,118 @@ def load_and_train():
 
 
 
-def plot_valence_popularity_regression(data):
+def plot_valence_popularity_regression(data, colgraph=st, coloptions=st.sidebar):
     fig = px.scatter(data, x='valence', y='popularity', trendline='ols', title='Valence et Popularité')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
+    
 
-def plot_time_signature_distribution(data):
+def plot_time_signature_distribution(data, colgraph=st, coloptions=st.sidebar):
     fig = px.bar(data['time_signature'].value_counts().reset_index(), x='index', y='time_signature', title='Répartition des Signatures Temporelles')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
 
-def plot_explicit_proportion(data):
+def plot_explicit_proportion(data, colgraph=st, coloptions=st.sidebar):
     fig = px.pie(data, names='is_explicit', title='Proportion de Morceaux Explicites')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
 
-def plot_common_key(data):
+def plot_common_key(data, colgraph=st, coloptions=st.sidebar):
     fig = px.bar(data['key'].value_counts().reset_index(), x='index', y='key', title='Clé Musicale la Plus Commune')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
 
-def plot_valence_vs_duration(data):
+def plot_valence_vs_duration(data, colgraph=st, coloptions=st.sidebar):
     fig = px.scatter(data, x='valence', y='duration_ms', title='Valence contre Durée')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
-def plot_liveness_distribution(data):
+def plot_liveness_distribution(data, colgraph=st, coloptions=st.sidebar):
     fig = px.histogram(data, x='liveness', title='Distribution de la Liveness')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
 
 # Note: Ceci nécessite que la colonne 'genre' soit présente dans vos données
-def plot_genre_distribution(data):
-    fig = px.bar(data['genre'].value_counts().reset_index(), x='index', y='genre', title='Genres Musicaux les Plus Communs')
-    st.plotly_chart(fig)
+def plot_genre_distribution(data, colgraph=st, coloptions=st.sidebar):
+    if 'genre' in data.columns and not data['genre'].isnull().all():
+        fig = px.bar(data['genre'].value_counts().reset_index(), x='index', y='genre', title='Genres Musicaux les Plus Communs')
+        colgraph.plotly_chart(fig)
+    else:
+        colgraph.error("The 'genre' column is missing or empty.")
 
 
-def plot_mode_distribution(data):
+
+def plot_mode_distribution(data, colgraph=st, coloptions=st.sidebar):
     fig = px.pie(data, names='mode', title='Répartition des Modes (Majeur/Mineur)')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
 
     
-def plot_feature_correlation(data):
+def plot_feature_correlation(data, colgraph=st, coloptions=st.sidebar):
     corr = data[['danceability', 'energy', 'valence', 'tempo', 'loudness', 'acousticness', 'instrumentalness', 'liveness', 'speechiness']].corr()
     fig = px.imshow(corr, text_auto=True, aspect="auto", title='Corrélation entre Caractéristiques Musicales')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
 
-def plot_loudness_boxplot(data):
+def plot_loudness_boxplot(data, colgraph=st, coloptions=st.sidebar):
     fig = px.box(data, y='loudness', title='Niveaux de Loudness')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
     
     
-def plot_popularity_distribution(data):
+def plot_popularity_distribution(data, colgraph=st, coloptions=st.sidebar):
     # Use a sidebar slider to select the number of bins
-    bins = st.sidebar.slider('Select number of bins for popularity distribution', 5, 50, 20)
+    bins = coloptions.slider('Select number of bins for popularity distribution', 5, 50, 20)
     fig = px.histogram(data, x='popularity', nbins=bins, title='Distribution de la Popularité')
-    st.plotly_chart(fig)
-
+    colgraph.plotly_chart(fig)
+    
 
 # Energy by Country with Sorting Selector
-def plot_energy_by_country(data):
+def plot_energy_by_country(data, colgraph=st, coloptions=st.sidebar):
     # Use a sidebar radio button to select the sort order
-    sort_order = st.sidebar.radio('Select sort order for energy by country', ['Ascending', 'Descending'])
+    sort_order = coloptions.radio('Select sort order for energy by country', ['Ascending', 'Descending'])
     energy_country = data.groupby('country')['energy'].mean().reset_index()
     energy_country = energy_country.sort_values(by='energy', ascending=(sort_order == 'Ascending'))
     fig = px.bar(energy_country, y='country', x='energy', orientation='h', title='Energie Moyenne par Pays')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
 # Danceability vs Energy with Alpha Selector
-def plot_danceability_vs_energy(data):
-    alpha = st.sidebar.slider('Select alpha for danceability vs energy plot', 
+def plot_danceability_vs_energy(data, colgraph=st, coloptions=st.sidebar):
+    alpha = coloptions.slider('Select alpha for danceability vs energy plot', 
                               min_value=0.1, max_value=1.0, value=0.5, key='alpha_slider')
     fig = px.scatter(data, x='danceability', y='energy', opacity=alpha,
                      title='Danceabilité contre Energie', labels={'danceability': 'Danceabilité', 'energy': 'Energie'})
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
 
-def plot_duration_distribution(data):
-    unit = st.sidebar.radio('Select duration unit', ('Milliseconds', 'Minutes'), key='duration_unit')
-    bins = st.sidebar.slider('Select number of bins for duration distribution', min_value=5, max_value=50, value=20, key='duration_bins')
+def plot_duration_distribution(data, colgraph=st, coloptions=st.sidebar):
+    unit = coloptions.radio('Select duration unit', ('Minutes', 'Milliseconds'), key='duration_unit')
+    bins = coloptions.slider('Select number of bins for duration distribution', min_value=5, max_value=50, value=20, key='duration_bins')
     durations = data['duration_ms'] if unit == 'Milliseconds' else data['duration_ms'] / 60000
     title = 'Distribution des Durées des Morceaux' if unit == 'Milliseconds' else 'Distribution des Durées des Morceaux (en Minutes)'
     fig = px.histogram(data, x=durations, nbins=bins, title=title)
     fig.update_layout(xaxis_title=f'Durée ({unit})', yaxis_title='Nombre de Morceaux')
-    st.plotly_chart(fig)
+    colgraph.plotly_chart(fig)
+
+
+def filter_data(data, selected_countries, selected_daily_movement, selected_date_range, selected_explicit):
+    # Filter data based on user input
+    filtered_data = data[(data['country'].isin(selected_countries)) & 
+                        # (data['snapshot_date'].isin(selected_snapshot_dates)) & 
+                        (data['daily_movement'].between(*selected_daily_movement)) &
+                        (data['snapshot_date'].between(*selected_date_range))]
+
+    if selected_explicit == 'Explicit Content':
+        filtered_data = filtered_data[filtered_data['is_explicit']]
+    elif selected_explicit == 'Non-Explicit Content':
+        filtered_data = filtered_data[~filtered_data['is_explicit']]
+
+    return filtered_data
+
+
+
+def plot_data_filtered(filtered_data, colgraph=st, coloptions=st.sidebar):
+    # Display filtered data in a table
+    colgraph.header('Filtered Data')
+    colgraph.write(f'Data Dimension: {filtered_data.shape[0]} rows and {filtered_data.shape[1]} columns.')
+    colgraph.dataframe(filtered_data)
 
 
 def visualisation(data):
@@ -169,21 +199,138 @@ def visualisation(data):
         legend_name='Song frequency'
     ).add_to(m)
 
+    try:
+        # Add user input for data filtering
+        st.header('Data Filtering')
+
+        # Set default values for multiselect for countries
+        default_countries = ['FR', 'US', 'SK']
+        selected_countries = st.multiselect('Select Country', data['country'].unique(), default=default_countries)
+
+        # Set default values for multiselect for snapshot_date
+        # default_last_dates = list(data['snapshot_date'].nlargest(10))
+        # selected_snapshot_dates = st.sidebar.multiselect('Select Snapshot Dates', sorted(data['snapshot_date'].unique()), default=default_last_dates)
+        # selected_snapshot_dates = st.sidebar.slider('Select Snapshot Dates', min_value=data['snapshot_date'].min(), max_value=data['snapshot_date'].max(), value=(data['snapshot_date'].min(), data['snapshot_date'].max()))
+        min_date = data['snapshot_date'].min()
+        max_date = data['snapshot_date'].max()
+        default_date_range = [min_date, max_date]
+        selected_date_range = st.select_slider('Select Snapshot Date Range', options=pd.date_range(min_date, max_date, freq='D'), value=default_date_range)
+
+        selected_daily_movement = st.slider('Select Daily Movement Range', min_value=data['daily_movement'].min(), max_value=data['daily_movement'].max(), value=(data['daily_movement'].min(), data['daily_movement'].max()))
+
+        # Create mutually exclusive selection for explicitness
+        explicit_options = ['Both', 'Explicit Content', 'Non-Explicit Content']
+        selected_explicit = st.radio('Select Explicitness', explicit_options)
+
+        filtered_data = filter_data(data, selected_countries, selected_daily_movement, selected_date_range, selected_explicit)
+        
+        plot_data_filtered(filtered_data)
+    except:
+        st.write("Problem with data_filtered")
+
+    
+    # if col1.button("world map"):   
     folium_static(m)
-    plot_popularity_distribution(data)
-    plot_energy_by_country(data)
-    plot_danceability_vs_energy(data)
-    plot_duration_distribution(data)
-    plot_loudness_boxplot(data)
-    plot_feature_correlation(data)
-    plot_mode_distribution(data)
-    plot_genre_distribution(data)
-    plot_liveness_distribution(data)
-    plot_valence_vs_duration(data)
-    plot_common_key(data)
-    plot_explicit_proportion(data)
-    plot_time_signature_distribution(data)
-    plot_valence_popularity_regression(data)
+    # st.sidebar.header('Data Filtering by fast Henri (=jugement GPT)')
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='popularity_distribution')
+        plot_popularity_distribution(filtered_data, col1, col2) if on else plot_popularity_distribution(data, col1, col2)
+    except:
+        col1.write("Problem with popularity_distribution graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='energy_by_country')
+        plot_energy_by_country(filtered_data, col1, col2) if on else plot_energy_by_country(data, col1, col2)
+    except:
+        col1.write("Problem with energy_by_country graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='danceability_vs_energy')
+        plot_danceability_vs_energy(filtered_data, col1, col2) if on else plot_danceability_vs_energy(data, col1, col2)
+    except:
+        col1.write("Problem with danceability_vs_energy graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='duration_distribution')
+        plot_duration_distribution(filtered_data, col1, col2) if on else plot_duration_distribution(data, col1, col2)
+    except:
+        col1.write("Problem with duration_distribution graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='loudness_boxplot')
+        plot_loudness_boxplot(filtered_data, col1, col2) if on else plot_loudness_boxplot(data, col1, col2)
+    except:
+        col1.write("Problem with loudness_boxplot graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='feature_correlation')
+        plot_feature_correlation(filtered_data, col1, col2) if on else plot_feature_correlation(data, col1, col2)
+    except:
+        col1.write("Problem with feature_correlation graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='mode_distribution')
+        plot_mode_distribution(filtered_data, col1, col2) if on else plot_mode_distribution(data, col1, col2)
+    except:
+        col1.write("Problem with mode_distribution graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='genre_distribution')
+        plot_genre_distribution(filtered_data, col1, col2) if on else plot_genre_distribution(data, col1, col2)
+    except:
+        col1.write("Problem with genre_distribution graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='liveness_distribution')
+        plot_liveness_distribution(filtered_data, col1, col2) if on else plot_liveness_distribution(data, col1, col2)
+    except:
+        col1.write("Problem with liveness_distribution graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='valence_vs_duration')
+        plot_valence_vs_duration(filtered_data, col1, col2) if on else plot_valence_vs_duration(data, col1, col2)
+    except:
+        col1.write("Problem with valence_vs_duration graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='common_key')
+        plot_common_key(filtered_data, col1, col2) if on else plot_common_key(data, col1, col2)
+    except:
+        col1.write("Problem with common_key graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='explicit_proportion')
+        plot_explicit_proportion(filtered_data, col1, col2) if on else plot_explicit_proportion(data, col1, col2)
+    except:
+        col1.write("Problem with explicit_proportion graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='time_signature_distribution')
+        plot_time_signature_distribution(filtered_data, col1, col2) if on else plot_time_signature_distribution(data, col1, col2)
+    except:
+        col1.write("Problem with time_signature_distribution graph")
+
+    col1, col2 = st.columns([3, 1])
+    try:
+        on = col2.toggle('Use filtered data', key='valence_popularity_regression')
+        plot_valence_popularity_regression(filtered_data, col1, col2) if on else plot_valence_popularity_regression(data, col1, col2)
+    except:
+        col1.write("Problem with valence_popularity_regression graph")
+    
     data['popularity_moving_average'] = data['popularity'].rolling(window=7).mean()
 
     # Create a Bokeh chart (e.g., popularity trend)
@@ -192,7 +339,8 @@ def visualisation(data):
     p.add_tools(HoverTool(tooltips=[('Date', '@x{%F}'), ('Popularity', '@y')], formatters={'@x': 'datetime'}))
 
     # Display the Bokeh chart in Streamlit
-    st.bokeh_chart(p, use_container_width=True)
+    # if st.button("bokeh_chart"):   
+    col1.bokeh_chart(p, use_container_width=True)
 
     
 
@@ -203,7 +351,7 @@ def home():
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        st.image('starry-sky-8199764_1280.jpg', width=200)
+        st.image('logoSpotify.jpeg', width=200)
     
     with col2:
         st.subheader('Welcome to the Spotify Data Analysis App')
@@ -217,11 +365,12 @@ def home():
     st.dataframe(st.session_state['data'].head())
 
     # Team presentation
-    st.subheader('Meet the Team')
-    st.markdown('''
-    - **Henri Serano**: Le big boss
-    - **Sara Thibierge**: La putchiste
-    - **Eloi Seidlitz**: Le mec du Nord
+    expander_bar = st.expander("Meet the Team")
+    # st.subheader('Meet the Team')
+    expander_bar.markdown('''
+    - **Henri Serano**: Le fast guy, mangeur de crêpes
+    - **Sara Thibierge**: La putchiste, faiseuse de crêpes
+    - **Eloi Seidlitz**: Le pésident déchu, mangeur de crêpes
     ''')
 
     # You could also use st.image or st.markdown to add images of team members
@@ -281,67 +430,112 @@ def statistics(results):
 def main():
     st.sidebar.title('Navigation')
     choice = st.sidebar.radio('Choisir une page:', ['Accueil', 'Statistiques', 'Visualisations'])
-    mean_popularity = st.session_state['data']['popularity'].mean()
-    median_duration = st.session_state['data']['duration_ms'].median()
+    try:
+        mean_popularity = st.session_state['data']['popularity'].mean()
+        median_duration = st.session_state['data']['duration_ms'].median()
+    except:
+        mean_popularity = 0
+        median_duration = 0
+    try:
+        # 3. Mode of time signature
+        mode_time_signature = st.session_state['data']['time_signature'].mode()[0]
+    except:
+        mode_time_signature = 0
+    try:
+        range_loudness = st.session_state['data']['loudness'].max() - st.session_state['data']['loudness'].min()
+    except:
+        range_loudness = 0
+    try:
+        # 5. Standard deviation of tempo
+        std_tempo = st.session_state['data']['tempo'].std()
+    except:
+        std_tempo = 0
+    try:
+        # 6. Correlation between danceability and energy
+        correlation_dance_energy = st.session_state['data']['danceability'].corr(st.session_state['data']['energy'])
+    except:
+        correlation_dance_energy = 0
+    try:
+        # 7. Regression line for valence and popularity
+        slope, intercept, r_value, p_value, std_err = stats.linregress(st.session_state['data']['valence'], st.session_state['data']['popularity'])
+        regression_line = (slope, intercept)
+    except:
+        regression_line = 0
+    try:
+        # 8. Mean difference in days between snapshot date and album release date
+        st.session_state['data']['days_between'] = (st.session_state['data']['snapshot_date'] - st.session_state['data']['album_release_date']).dt.days
+        mean_days_between = st.session_state['data']['days_between'].mean()
+    except:
+        mean_days_between = 0
+    try:
+        # 9. Check if explicit content has higher popularity
+        explicit_popularity = st.session_state['data'][st.session_state['data']['is_explicit']]['popularity'].mean()
+        non_explicit_popularity = st.session_state['data'][~st.session_state['data']['is_explicit']]['popularity'].mean()
+        explicit_more_popular = explicit_popularity > non_explicit_popularity
+    except:
+        explicit_popularity = 0
+        non_explicit_popularity = 0
+        explicit_more_popular = 0
+    try:
+        # 10. Average speechiness for tracks with time signature of 4
+        avg_speechiness_time_sig_4 = st.session_state['data'][st.session_state['data']['time_signature'] == 4]['speechiness'].mean()
+    except:
+        avg_speechiness_time_sig_4 = 0
+    try:
+        # 11. Percentage of tracks with a danceability score above 0.7
+        perc_danceable_tracks = (st.session_state['data']['danceability'] > 0.7).mean() * 100
+    except:
+        perc_danceable_tracks = 0
+    try:
+        # 12. Most common key in the dataset
+        common_key = st.session_state['data']['key'].mode()[0]
+    except:
+        common_key = 0
+    try:
+        # 13. Difference in mean loudness between explicit and non-explicit tracks
+        mean_loudness_explicit = st.session_state['data'][st.session_state['data']['is_explicit']]['loudness'].mean()
+        mean_loudness_non_explicit = st.session_state['data'][~st.session_state['data']['is_explicit']]['loudness'].mean()
+        diff_mean_loudness_explicitness = mean_loudness_explicit - mean_loudness_non_explicit
+    except:
+        mean_loudness_explicit = 0
+        mean_loudness_non_explicit = 0
+        diff_mean_loudness_explicitness = 0
+    try:
+        # 14. Energy levels across different countries
+        energy_by_country = st.session_state['data'].groupby('country')['energy'].mean().to_dict()
+    except:
+        energy_by_country = 0
+    try:
+        # 15. Predicted popularity score from valence using the regression model
+        st.session_state['data']['predicted_popularity'] = intercept + slope * st.session_state['data']['valence']
+    except:
+        st.write("Problem with graph")
+    try:
+        # 16. Checking for any instrumental tracks
+        instrumental_tracks = st.session_state['data']['instrumentalness'].apply(lambda x: True if x > 0.5 else False).any()
+    except:
+        instrumental_tracks = 0
+    try:
+        # 17. Variance in danceability across the dataset
+        variance_danceability = st.session_state['data']['danceability'].var()
+    except:
+        variance_danceability = 0
+    try:
+        # 18. Find the track with the highest liveness
+        track_highest_liveness = st.session_state['data'].loc[st.session_state['data']['liveness'].idxmax(), 'name']
+    except:
+        track_highest_liveness = 0
+    try:
+        # 19. Determine if higher valence is associated with shorter duration
+        correlation_valence_duration = st.session_state['data']['valence'].corr(st.session_state['data']['duration_ms'])
+    except:
+        correlation_valence_duration = 0
+    try:
+        # 20. Proportion of tracks in major mode (mode=1)
+        major_mode_proportion = (st.session_state['data']['mode'] == 1).mean()
+    except:
+        major_mode_proportion = 0
     
-    # 3. Mode of time signature
-    mode_time_signature = st.session_state['data']['time_signature'].mode()[0]
-    range_loudness = st.session_state['data']['loudness'].max() - st.session_state['data']['loudness'].min()
-
-    # 5. Standard deviation of tempo
-    std_tempo = st.session_state['data']['tempo'].std()
-
-    # 6. Correlation between danceability and energy
-    correlation_dance_energy = st.session_state['data']['danceability'].corr(st.session_state['data']['energy'])
-
-    # 7. Regression line for valence and popularity
-    slope, intercept, r_value, p_value, std_err = stats.linregress(st.session_state['data']['valence'], st.session_state['data']['popularity'])
-    regression_line = (slope, intercept)
-
-    # 8. Mean difference in days between snapshot date and album release date
-    st.session_state['data']['days_between'] = (st.session_state['data']['snapshot_date'] - st.session_state['data']['album_release_date']).dt.days
-    mean_days_between = st.session_state['data']['days_between'].mean()
-
-    # 9. Check if explicit content has higher popularity
-    explicit_popularity = st.session_state['data'][st.session_state['data']['is_explicit']]['popularity'].mean()
-    non_explicit_popularity = st.session_state['data'][~st.session_state['data']['is_explicit']]['popularity'].mean()
-    explicit_more_popular = explicit_popularity > non_explicit_popularity
-
-    # 10. Average speechiness for tracks with time signature of 4
-    avg_speechiness_time_sig_4 = st.session_state['data'][st.session_state['data']['time_signature'] == 4]['speechiness'].mean()
-
-    # 11. Percentage of tracks with a danceability score above 0.7
-    perc_danceable_tracks = (st.session_state['data']['danceability'] > 0.7).mean() * 100
-
-    # 12. Most common key in the dataset
-    common_key = st.session_state['data']['key'].mode()[0]
-
-    # 13. Difference in mean loudness between explicit and non-explicit tracks
-    mean_loudness_explicit = st.session_state['data'][st.session_state['data']['is_explicit']]['loudness'].mean()
-    mean_loudness_non_explicit = st.session_state['data'][~st.session_state['data']['is_explicit']]['loudness'].mean()
-    diff_mean_loudness_explicitness = mean_loudness_explicit - mean_loudness_non_explicit
-
-    # 14. Energy levels across different countries
-    energy_by_country = st.session_state['data'].groupby('country')['energy'].mean().to_dict()
-
-    # 15. Predicted popularity score from valence using the regression model
-    st.session_state['data']['predicted_popularity'] = intercept + slope * st.session_state['data']['valence']
-
-    # 16. Checking for any instrumental tracks
-    instrumental_tracks = st.session_state['data']['instrumentalness'].apply(lambda x: True if x > 0.5 else False).any()
-
-    # 17. Variance in danceability across the dataset
-    variance_danceability = st.session_state['data']['danceability'].var()
-
-    # 18. Find the track with the highest liveness
-    track_highest_liveness = st.session_state['data'].loc[st.session_state['data']['liveness'].idxmax(), 'name']
-
-    # 19. Determine if higher valence is associated with shorter duration
-    correlation_valence_duration = st.session_state['data']['valence'].corr(st.session_state['data']['duration_ms'])
-
-    # 20. Proportion of tracks in major mode (mode=1)
-    major_mode_proportion = (st.session_state['data']['mode'] == 1).mean()
-
     # Collecting the results to output
     results = {
         'Mean Popularity': mean_popularity,

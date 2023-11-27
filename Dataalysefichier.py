@@ -80,6 +80,8 @@ def genre_prediction_model():
     df_rock=pd.read_csv('rock_spotify.csv')
     df_country=pd.read_csv('country_spotify.csv')
     df_rb=pd.read_csv('r&b_spotify.csv')
+    df_jazz=pd.read_csv('jazz_spotify.csv')
+    df_lofi=pd.read_csv('lofi_spotify.csv')
 
     # Scale the data
     col_names=df_pop.drop(['id','time_signature'],axis=1).columns
@@ -87,17 +89,23 @@ def genre_prediction_model():
     df_pop=pd.DataFrame(sc.fit_transform(df_pop.drop(['id','time_signature'],axis=1)),columns=col_names)
     df_rock=pd.DataFrame(sc.fit_transform(df_rock.drop(['id','time_signature'],axis=1)),columns=col_names)
     df_rb=pd.DataFrame(sc.fit_transform(df_rb.drop(['id','time_signature'],axis=1)),columns=col_names)
-    df_hiphop=pd.DataFrame(sc.fit_transform(df_country.drop(['id','time_signature'],axis=1)),columns=col_names)
+    df_country=pd.DataFrame(sc.fit_transform(df_country.drop(['id','time_signature'],axis=1)),columns=col_names)
+    df_jazz=pd.DataFrame(sc.fit_transform(df_jazz.drop(['id','time_signature'],axis=1)),columns=col_names)
+    df_lofi=pd.DataFrame(sc.fit_transform(df_lofi.drop(['id','time_signature'],axis=1)),columns=col_names)
     # Attribute a number to each genre
+# Attribute a number to each genre
     df_pop['genre']=1
     df_rock['genre']=2
     df_rb['genre']=3
     df_country['genre']=4
+    df_jazz['genre']=5
+    df_lofi['genre']=6
 
     # Create a concatenated dataframe
-    df=pd.concat([df_pop, df_rock, df_rb, df_country])
+    df=pd.concat([df_pop, df_rock, df_rb, df_country,df_jazz,df_lofi])    
+
     
-    X = df.drop(['genre', 'id','time_signature'], axis=1)
+    X = df.drop(['genre'], axis=1)
     y = df['genre']
     # Replace NaN values with the mean of each column
     imputer = SimpleImputer(strategy='mean')
@@ -132,7 +140,7 @@ def predict_genre_song(track_uri, sp,genre_predict_model):
     # Make predictions using the trained model
     new_predictions_proba = genre_predict_model.predict_proba(new_data)
     class_labels = genre_predict_model.classes_
-    genre_mapping = {1: 'Pop', 2: 'Rock', 3: 'R&B', 4: 'Country'}
+    genre_mapping = {1: 'Pop', 2: 'Rock', 3: 'R&B', 4: 'Country', 5: 'Jazz',6:'Lofi'}
     
     # Get the predicted genre label
     predicted_genre_label = class_labels[np.argmax(new_predictions_proba)]

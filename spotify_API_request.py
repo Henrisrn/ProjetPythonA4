@@ -48,12 +48,15 @@ def get_features_df(sp,song_ids):
 ids=['3ZgmfR6lsnCwdffZUan8EA',
           '1VirHbmy0KMtN8vbaOvIL6',
           '76h0bH2KJhiBuLZqfvPp3K',
-          '5tA2x3J6yAaJpa7mHGvhmB',
+          '37i9dQZF1DXaiEFNvQPZrM',
+          '37i9dQZF1DXbITWG1ZJKYt',
+          '37i9dQZF1DX9RwfGbeGQwP'
           ] 
-genres=['pop','rock','r&b','country']
+genres=['pop','rock','r&b','country','jazz','lofi']
 i=0
 for genre in genres:
     song_ids=get_ids(sp,ids[i])
+    song_ids = song_ids[:100]
     df=get_features_df(sp, song_ids)
     df.to_csv('{}_spotify.csv'.format(genre),index=False)
     i+=1

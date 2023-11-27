@@ -28,20 +28,20 @@ from random import randint
 from sklearn.neighbors import KNeighborsClassifier
 import numpy as np
 from sklearn.impute import SimpleImputer
-import re
 
 
+# Setting the protocol buffer implementation
 os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 
+# Streamlit configuration
 st.set_page_config(layout="wide")
 
 
-#%% MISE EN PLACE DE LA SESSION STREAMLIT POUR POUVOIR CHARGER ET ENTRAINER LE MODEL
-
+# Loading and training the model using caching
 @st.cache_data
 def load_and_train():
     if 'data' not in st.session_state or 'model' not in st.session_state:
-        #%% TRAITEMENT DE LA DONNEE
+        #%% Data Processing
         columns_to_load = ["name","artists","daily_rank","daily_movement","weekly_movement","country","snapshot_date","popularity","is_explicit","duration_ms","album_name","album_release_date","danceability","energy","key","loudness","mode","speechiness","acousticness","instrumentalness","liveness","valence","tempo","time_signature"] 
         st.session_state['data'] = pd.read_csv("universal_top_spotify_songs.csv", usecols=columns_to_load,sep=",")
         st.session_state['features'] = st.session_state['data'][['danceability', 'energy', 'key', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'time_signature', 'mode']]
@@ -56,15 +56,15 @@ def load_and_train():
         #st.session_state['data']['country'] = st.session_state['data']['country'].map(country_codes)
         
         
-        #%%ENTRAINEMENT DU MODEL
+        #%% Model Training
         features = st.session_state['data'][['danceability', 'energy', 'key', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'time_signature', 'mode']]
         target = np.random.choice(['Rock', 'Pop', 'Jazz', 'Hip-Hop'], size=len(st.session_state['data']))
         with st.spinner('Training model...'):
             X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
-            # Standardize features
+            # Standardize
             scaler = StandardScaler().fit(X_train)
             X_train = scaler.transform(X_train)
-            # Initialize and train your model
+            # Initialize and train model
             model = RandomForestClassifier()
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
@@ -74,41 +74,43 @@ def load_and_train():
         st.session_state['data']['genre'] = st.session_state['clf'].predict(st.session_state['scaler'].transform(st.session_state['features']))
 
 def genre_prediction_model():
-    # Création de dataframes par genre
+    """function to train the genre prediction model"""
+    # Creating dataframes by genre
     df_pop=pd.read_csv('pop_spotify.csv')
     df_rock=pd.read_csv('rock_spotify.csv')
     df_country=pd.read_csv('country_spotify.csv')
     df_rb=pd.read_csv('r&b_spotify.csv')
 
-    # scale the data
+    # Scale the data
     col_names=df_pop.drop(['id','time_signature'],axis=1).columns
     sc=MinMaxScaler()
     df_pop=pd.DataFrame(sc.fit_transform(df_pop.drop(['id','time_signature'],axis=1)),columns=col_names)
     df_rock=pd.DataFrame(sc.fit_transform(df_rock.drop(['id','time_signature'],axis=1)),columns=col_names)
     df_rb=pd.DataFrame(sc.fit_transform(df_rb.drop(['id','time_signature'],axis=1)),columns=col_names)
     df_hiphop=pd.DataFrame(sc.fit_transform(df_country.drop(['id','time_signature'],axis=1)),columns=col_names)
-    # attribute a number to each genre
+    # Attribute a number to each genre
     df_pop['genre']=1
     df_rock['genre']=2
     df_rb['genre']=3
     df_country['genre']=4
 
-    # create a concatenated dataframe
+    # Create a concatenated dataframe
     df=pd.concat([df_pop, df_rock, df_rb, df_country])
-
+    
     X = df.drop(['genre', 'id','time_signature'], axis=1)
     y = df['genre']
     # Replace NaN values with the mean of each column
     imputer = SimpleImputer(strategy='mean')
     X_imputed = imputer.fit_transform(X)
     
-    # Entraînement du modèle de classification
+    # Classification model training
     X_train, X_test, y_train, y_test = train_test_split(X_imputed, y, test_size=0.2, random_state=42)
     model = RandomForestClassifier()
     model.fit(X_train, y_train)
     return model
 
 def predict_genre_song(track_uri, sp,genre_predict_model):
+    """function to predict the genre song according to the prediction model"""
     track_uri = extract_track_id_from_uri(track_uri)
     print(track_uri)
     new_data_features = sp.audio_features(track_uri)
@@ -137,42 +139,39 @@ def predict_genre_song(track_uri, sp,genre_predict_model):
 
     # Display the predicted genre using the mapping
     predicted_genre = genre_mapping[predicted_genre_label]
-    # Format and display the probability scores as percentages
+    # Format the probability scores as percentages
     proba_percentage = [f"{genre_mapping[label]}: {proba*100:.2f}%" for label, proba in zip(class_labels, new_predictions_proba[0])]
     return f'Predicted Genre: {predicted_genre}', f'Probability Scores:\n {"  ,  ".join(proba_percentage)}'
         
-        
 def extract_track_id_from_uri(spotify_uri):
+    """function to extract track id from a song uri"""
     # Find the start and end indices of the track ID
     start_index = spotify_uri.find('/track/') + len('/track/')
     end_index = spotify_uri.find('?', start_index)
 
-    # Extract the track ID using slicing
+    # Extract the track ID
     track_id = spotify_uri[start_index:end_index]
 
     # Return the transformed URI
     return f'spotify:track:{track_id}' if track_id else None
 
+#%% Plot the data
 
 def plot_valence_popularity_regression(data, colgraph=st, coloptions=st.sidebar):
     fig = px.scatter(data, x='valence', y='popularity', trendline='ols', title='Valence et Popularité')
     colgraph.plotly_chart(fig)
     
-
 def plot_time_signature_distribution(data, colgraph=st, coloptions=st.sidebar):
     fig = px.bar(data['time_signature'].value_counts().reset_index(), x='index', y='time_signature', title='Répartition des Signatures Temporelles')
     colgraph.plotly_chart(fig)
-
 
 def plot_explicit_proportion(data, colgraph=st, coloptions=st.sidebar):
     fig = px.pie(data, names='is_explicit', title='Proportion de Morceaux Explicites')
     colgraph.plotly_chart(fig)
 
-
 def plot_common_key(data, colgraph=st, coloptions=st.sidebar):
     fig = px.bar(data['key'].value_counts().reset_index(), x='index', y='key', title='Clé Musicale la Plus Commune')
     colgraph.plotly_chart(fig)
-
 
 def plot_valence_vs_duration(data, colgraph=st, coloptions=st.sidebar):
     fig = px.scatter(data, x='valence', y='duration_ms', title='Valence contre Durée')
@@ -182,8 +181,6 @@ def plot_liveness_distribution(data, colgraph=st, coloptions=st.sidebar):
     fig = px.histogram(data, x='liveness', title='Distribution de la Liveness')
     colgraph.plotly_chart(fig)
 
-
-# Note: Ceci nécessite que la colonne 'genre' soit présente dans vos données
 def plot_genre_distribution(data, colgraph=st, coloptions=st.sidebar):
     if 'genre' in data.columns and not data['genre'].isnull().all():
         fig = px.bar(data['genre'].value_counts().reset_index(), x='index', y='genre', title='Genres Musicaux les Plus Communs')
@@ -191,43 +188,33 @@ def plot_genre_distribution(data, colgraph=st, coloptions=st.sidebar):
     else:
         colgraph.error("The 'genre' column is missing or empty.")
 
-
-
 def plot_mode_distribution(data, colgraph=st, coloptions=st.sidebar):
     fig = px.pie(data, names='mode', title='Répartition des Modes (Majeur/Mineur)')
     colgraph.plotly_chart(fig)
 
-
-    
 def plot_feature_correlation(data, colgraph=st, coloptions=st.sidebar):
     corr = data[['danceability', 'energy', 'valence', 'tempo', 'loudness', 'acousticness', 'instrumentalness', 'liveness', 'speechiness']].corr()
     fig = px.imshow(corr, text_auto=True, aspect="auto", title='Corrélation entre Caractéristiques Musicales')
     colgraph.plotly_chart(fig)
 
-
 def plot_loudness_boxplot(data, colgraph=st, coloptions=st.sidebar):
     fig = px.box(data, y='loudness', title='Niveaux de Loudness')
-    colgraph.plotly_chart(fig)
-
-    
+    colgraph.plotly_chart(fig)  
     
 def plot_popularity_distribution(data, colgraph=st, coloptions=st.sidebar):
-    # Use a sidebar slider to select the number of bins
+    # Sidebar slider to select the number of bins
     bins = coloptions.slider('Select number of bins for popularity distribution', 5, 50, 20)
     fig = px.histogram(data, x='popularity', nbins=bins, title='Distribution de la Popularité')
     colgraph.plotly_chart(fig)
     
-
-# Energy by Country with Sorting Selector
 def plot_energy_by_country(data, colgraph=st, coloptions=st.sidebar):
-    # Use a sidebar radio button to select the sort order
+    # Sidebar button to select the sort order
     sort_order = coloptions.radio('Select sort order for energy by country', ['Ascending', 'Descending'])
     energy_country = data.groupby('country')['energy'].mean().reset_index()
     energy_country = energy_country.sort_values(by='energy', ascending=(sort_order == 'Ascending'))
     fig = px.bar(energy_country, y='country', x='energy', orientation='h', title='Energie Moyenne par Pays')
     colgraph.plotly_chart(fig)
 
-# Danceability vs Energy with Alpha Selector
 def plot_danceability_vs_energy(data, colgraph=st, coloptions=st.sidebar):
     alpha = coloptions.slider('Select alpha for danceability vs energy plot', 
                               min_value=0.1, max_value=1.0, value=0.5, key='alpha_slider')
@@ -244,7 +231,6 @@ def plot_duration_distribution(data, colgraph=st, coloptions=st.sidebar):
     fig.update_layout(xaxis_title=f'Durée ({unit})', yaxis_title='Nombre de Morceaux')
     colgraph.plotly_chart(fig)
 
-
 def filter_data(data, selected_countries, selected_daily_movement, selected_date_range, selected_explicit):
     # Filter data based on user input
     filtered_data = data[(data['country'].isin(selected_countries)) & 
@@ -259,14 +245,11 @@ def filter_data(data, selected_countries, selected_daily_movement, selected_date
 
     return filtered_data
 
-
-
 def plot_data_filtered(filtered_data, colgraph=st, coloptions=st.sidebar):
     # Display filtered data in a table
     colgraph.header('Filtered Data')
     colgraph.write(f'Data Dimension: {filtered_data.shape[0]} rows and {filtered_data.shape[1]} columns.')
     colgraph.dataframe(filtered_data)
-
 
 def visualisation(data):
     country_counts = data['country'].value_counts().reset_index()
@@ -276,7 +259,6 @@ def visualisation(data):
     # Initialize the map
     with open('custom.geo.json', 'r', encoding='utf-8') as f:
         geo_json_data = json.load(f)
-    # Initialize the map
     m = folium.Map(location=[20, 0], zoom_start=2)
     folium.GeoJson(geo_json_data).add_to(m)
     # Add the choropleth layer
@@ -435,7 +417,7 @@ def visualisation(data):
     # if st.button("bokeh_chart"):   
     col1.bokeh_chart(p, use_container_width=True)
 
-    
+#%% Define Streamlit Menus   
 
 def home(sp):
     genre_predict_model = genre_prediction_model()
@@ -462,14 +444,12 @@ def home(sp):
     expander_bar = st.expander("Meet the Team")
     # st.subheader('Meet the Team')
     expander_bar.markdown('''
-    - **Henri Serano**: Le fast guy, mangeur de crêpes
-    - **Sara Thibierge**: La putchiste, faiseuse de crêpes
-    - **Eloi Seidlitz**: Le pésident déchu, mangeur de crêpes
+    - **Henri Serano**
+    - **Sara Thibierge**
+    - **Eloi Seidlitz**
     ''')
 
-    # You could also use st.image or st.markdown to add images of team members
     
-    # For animations and more complex styling, you would need to inject custom HTML/CSS
     st.markdown(
         """
         <style>
@@ -490,8 +470,6 @@ def home(sp):
     # Add a button to trigger genre prediction
     if st.button('Predict Genre'):
         if track_uri is not "": 
-            # Use your existing code to make predictions
-            # Extract audio features for the new track using Spotify API
             predicted_genre, proba_score = predict_genre_song(track_uri, sp, genre_predict_model)
             st.success(predicted_genre)
             st.success(proba_score)
@@ -503,9 +481,11 @@ def home(sp):
         unsafe_allow_html=True
     )
     
-# Fonction pour afficher les statistiques
+
 
 def statistics(results):
+    """Statistics display function"""
+    
     st.title('Statistiques des Données Spotify')
     st.write('Voici un résumé des statistiques clés issues de l\'analyse des données Spotify:')
 
@@ -533,7 +513,6 @@ def statistics(results):
         st.write(f"Variance en danceabilité:",results['Variance Danceability'])
 
         
-    
 
 def main():
     # Set up Spotify API credentials
@@ -680,6 +659,8 @@ def main():
         statistics(results)
     elif choice == 'Visualisations':
         visualisation(st.session_state['data'])
+
+
 
 if __name__ == '__main__':
     geolocator = Nominatim(user_agent="geoapiExercises")

@@ -166,7 +166,18 @@ def extract_track_id_from_uri(spotify_uri):
 #%% Plot the data
 
 def plot_valence_popularity_regression(data, colgraph=st, coloptions=st.sidebar):
-    fig = px.scatter(data, x='valence', y='popularity', trendline='ols', title='Valence et Popularité')
+    fig = px.scatter(data, x='valence', y='duration_ms', 
+                    title='Relationship Between Valence and Song Duration',
+                    labels={'valence': 'Valence', 'duration_ms': 'Duration (ms)'},
+                    color='valence', 
+                    color_continuous_scale='Viridis',
+                    size='duration_ms',  # Size points based on duration
+                    )
+
+    fig.update_layout(
+        showlegend=False, 
+        margin=dict(l=50, r=50, t=40, b=50), 
+    )    
     colgraph.plotly_chart(fig)
     
 def plot_time_signature_distribution(data, colgraph=st, coloptions=st.sidebar):
@@ -174,7 +185,7 @@ def plot_time_signature_distribution(data, colgraph=st, coloptions=st.sidebar):
     colgraph.plotly_chart(fig)
 
 def plot_explicit_proportion(data, colgraph=st, coloptions=st.sidebar):
-    fig = px.pie(data, names='is_explicit', title='Proportion de Morceaux Explicites')
+    fig = px.pie(data, names='is_explicit', title='Proportion of Explicit Songs',  color='is_explicit', color_discrete_map={0: 'pink', 1: 'red'})
     colgraph.plotly_chart(fig)
 
 def plot_common_key(data, colgraph=st, coloptions=st.sidebar):
@@ -182,11 +193,30 @@ def plot_common_key(data, colgraph=st, coloptions=st.sidebar):
     colgraph.plotly_chart(fig)
 
 def plot_valence_vs_duration(data, colgraph=st, coloptions=st.sidebar):
-    fig = px.scatter(data, x='valence', y='duration_ms', title='Valence contre Durée')
+    data['duration_sec'] = data['duration_ms'] / 1000
+    durations_sec = data['duration_sec']
+    title = 'Distribution of song durations'
+    fig = px.histogram(data, x=durations_sec, title=title,color_discrete_sequence=['blue'])
+    fig.update_layout(xaxis_title='Duration (s)', yaxis_title='Number of Songs')
     colgraph.plotly_chart(fig)
 
 def plot_liveness_distribution(data, colgraph=st, coloptions=st.sidebar):
     fig = px.histogram(data, x='liveness', title='Distribution de la Liveness')
+    colgraph.plotly_chart(fig)
+
+def create_violin_plot(data, colgraph=st, coloptions=st.sidebar):
+    
+    fig = px.violin(data, y='valence', x='mode', 
+                    title='Distribution of Valence Across Major and Minor Modes',
+                    labels={'valence': 'Valence', 'mode': 'Mode'},
+                    color='mode', 
+                    violinmode='group',  # Display violins side by side
+                    box=True,  
+                    )
+
+    fig.update_layout(
+        margin=dict(l=50, r=50, t=40, b=50),  
+    )
     colgraph.plotly_chart(fig)
 
 def plot_genre_distribution(data, colgraph=st, coloptions=st.sidebar):
@@ -197,12 +227,12 @@ def plot_genre_distribution(data, colgraph=st, coloptions=st.sidebar):
         colgraph.error("The 'genre' column is missing or empty.")
 
 def plot_mode_distribution(data, colgraph=st, coloptions=st.sidebar):
-    fig = px.pie(data, names='mode', title='Répartition des Modes (Majeur/Mineur)')
+    fig = px.pie(data, names='mode', title='Distribution of Modes (Major/Minor)', color='mode', color_discrete_sequence=['orange', 'blue'])
     colgraph.plotly_chart(fig)
 
 def plot_feature_correlation(data, colgraph=st, coloptions=st.sidebar):
     corr = data[['danceability', 'energy', 'valence', 'tempo', 'loudness', 'acousticness', 'instrumentalness', 'liveness', 'speechiness']].corr()
-    fig = px.imshow(corr, text_auto=True, aspect="auto", title='Corrélation entre Caractéristiques Musicales')
+    fig = px.imshow(corr, text_auto=True, aspect="auto", title='Correlation between Musical Features', color_continuous_scale='viridis')
     colgraph.plotly_chart(fig)
 
 def plot_loudness_boxplot(data, colgraph=st, coloptions=st.sidebar):
@@ -211,24 +241,66 @@ def plot_loudness_boxplot(data, colgraph=st, coloptions=st.sidebar):
     
 def plot_popularity_distribution(data, colgraph=st, coloptions=st.sidebar):
     # Sidebar slider to select the number of bins
-    bins = coloptions.slider('Select number of bins for popularity distribution', 5, 50, 20)
-    fig = px.histogram(data, x='popularity', nbins=bins, title='Distribution de la Popularité')
+    # Ensure that the selected number of bins is within a reasonable range
+    bins = 100
+    bins = max(5, min(100, bins))
+    
+    color_mapping = {'popularity': '#1f77b4'}
+    
+    fig = px.histogram(data, x='popularity', nbins=bins, title='Distribution of Music Popularity',
+                       labels={'popularity': 'Popularity Score'}, color_discrete_map=color_mapping,
+                       template='plotly', 
+                      )
+
+    fig.update_layout(
+        xaxis_title='Popularity Score',
+        yaxis_title='Frequency',
+    )
+
+    # Show the plot
     colgraph.plotly_chart(fig)
     
 def plot_energy_by_country(data, colgraph=st, coloptions=st.sidebar):
     # Sidebar button to select the sort order
-    sort_order = coloptions.radio('Select sort order for energy by country', ['Ascending', 'Descending'])
     energy_country = data.groupby('country')['energy'].mean().reset_index()
-    energy_country = energy_country.sort_values(by='energy', ascending=(sort_order == 'Ascending'))
-    fig = px.bar(energy_country, y='country', x='energy', orientation='h', title='Energie Moyenne par Pays')
+    # Sort the data based on the mean energy
+    energy_country = energy_country.sort_values(by='energy', ascending=False)
+    fig = px.bar(energy_country, y='country', x='energy', orientation='h', 
+                 title='Average Energy by Country', labels={'energy': 'Average Energy'},
+                 color='energy', color_continuous_scale='Viridis')  # Adjust the color scale
+
+    fig.update_yaxes(categoryorder='total ascending')
+
+    fig.update_layout(
+        showlegend=False,  # Remove color legend for clarity
+        margin=dict(l=20, r=20, t=40, b=20),  # adjust margins
+    )    
     colgraph.plotly_chart(fig)
 
 def plot_danceability_vs_energy(data, colgraph=st, coloptions=st.sidebar):
     alpha = coloptions.slider('Select alpha for danceability vs energy plot', 
                               min_value=0.1, max_value=1.0, value=0.5, key='alpha_slider')
-    fig = px.scatter(data, x='danceability', y='energy', opacity=alpha,
-                     title='Danceabilité contre Energie', labels={'danceability': 'Danceabilité', 'energy': 'Energie'})
+    fig = px.scatter(data, x='danceability', y='energy', color='valence',
+                     title='Scatter Plot: Danceability vs Energy (Colored by Valence)', 
+                     labels={'danceability': 'Danceabilité', 'energy': 'Energie'},
+                     color_continuous_scale='Viridis')  # You can choose a different color scale
     colgraph.plotly_chart(fig)
+
+def plot_valence_popularity(data, colgraph=st, coloptions=st.sidebar):
+    fig = px.scatter(data, x='valence', y='popularity', 
+                    title='Relationship Between Valence and Popularity',
+                     labels={'valence': 'Valence', 'popularity': 'Popularity'},
+                     color='valence',  
+                     color_continuous_scale='Viridis',  
+                    trendline='ols',  # Add a linear regression trendline
+                    ) 
+
+    fig.update_layout(
+        showlegend=False,  
+        margin=dict(l=50, r=50, t=40, b=50),  
+    )
+    colgraph.plotly_chart(fig)
+    
 
 def plot_duration_distribution(data, colgraph=st, coloptions=st.sidebar):
     unit = coloptions.radio('Select duration unit', ('Minutes', 'Milliseconds'), key='duration_unit')
@@ -327,13 +399,28 @@ def visualisation(data):
     try:
         on = col2.toggle('Use filtered data', key='energy_by_country')
         plot_energy_by_country(filtered_data, col1, col2) if on else plot_energy_by_country(data, col1, col2)
+        col1.write(""" We can see that some country have more energetic songs than others ! Like Bulgaria, Japan, Brazil compared to Iceland, Israel, Vietnam.""")
     except:
         col1.write("Problem with energy_by_country graph")
 
     col1, col2 = st.columns([3, 1])
     try:
+        create_violin_plot(filtered_data, col1, col2) if on else create_violin_plot(data, col1, col2)
+    except:
+        col1.write("Problem with energy_by_country graph")
+    
+    col1, col2 = st.columns([3, 1])
+    try:
         on = col2.toggle('Use filtered data', key='danceability_vs_energy')
         plot_danceability_vs_energy(filtered_data, col1, col2) if on else plot_danceability_vs_energy(data, col1, col2)
+        col1.write(""" - Danceability : This metric indicates how suitable a track is for dancing based on a combination of musical elements like tempo, rhythm stability, beat strength, and overall regularity. 
+        A higher danceability score suggests a more danceable track.
+        - Energy : This feature measures the intensity and activity of a track. Tracks with high energy are generally fast, loud, and noisy, while those with low energy may be slower and calmer.
+        - Valence : Valence is a measure of the musical positiveness of a track. Tracks with high valence sound more positive (happy, cheerful), while those with low valence sound more negative (sad, angry).
+        
+        By visualizing danceability vs. energy and coloring the points by valence, we can observe a cluster in the data: 
+        We can see that when the energy is high, the danceability is and the valence is high too. 
+        Outlying points may represent exceptional songs that deviate significantly from the general trends.""")
     except:
         col1.write("Problem with danceability_vs_energy graph")
 
@@ -355,6 +442,9 @@ def visualisation(data):
     try:
         on = col2.toggle('Use filtered data', key='feature_correlation')
         plot_feature_correlation(filtered_data, col1, col2) if on else plot_feature_correlation(data, col1, col2)
+        col1.write("""In this plot , it is evident that there is a strong positive correlation between loudness and energy. Conversely, there exists a negative correlation between acousticness and energy.
+ This indicates that as the loudness of a song increases, there is a tendency for its energy level to also rise. On the other hand, the negative relationship between acousticness and energy suggests that as the acoustic nature of a track increases, its energy level tends to decrease.
+ """)
     except:
         col1.write("Problem with feature_correlation graph")
 
@@ -362,6 +452,14 @@ def visualisation(data):
     try:
         on = col2.toggle('Use filtered data', key='mode_distribution')
         plot_mode_distribution(filtered_data, col1, col2) if on else plot_mode_distribution(data, col1, col2)
+        col1.write("""We can see that the musics are equaly minor or major.
+ In music theory, the terms "minor" and "major" refer to two of the most common tonalities. They describe the overall character or mood of a musical piece.
+ 
+     Major Key:
+         Music in a major key is characterized by a bright, happy, or positive sound. 
+ 
+     Minor Key:
+         Conversely, music in a minor key has a darker, sadder, or more introspective quality. """)
     except:
         col1.write("Problem with mode_distribution graph")
 
@@ -402,6 +500,10 @@ def visualisation(data):
 
     col1, col2 = st.columns([3, 1])
     try:
+        plot_valence_popularity(filtered_data, col1, col2)
+    except:
+        col1.write("Problem with explicit_proportion graph")
+    try:
         on = col2.toggle('Use filtered data', key='time_signature_distribution')
         plot_time_signature_distribution(filtered_data, col1, col2) if on else plot_time_signature_distribution(data, col1, col2)
     except:
@@ -411,6 +513,10 @@ def visualisation(data):
     try:
         on = col2.toggle('Use filtered data', key='valence_popularity_regression')
         plot_valence_popularity_regression(filtered_data, col1, col2) if on else plot_valence_popularity_regression(data, col1, col2)
+        col1.write(""""valence" refers to one of the emotional dimensions used to describe the mood or emotional content of a musical piece. A valence near 0 represent a sad or melancholic mood.
+        A valence approaching 1 represent a happy, positive and joyful mood. 
+        In this graph we can see that their is no real relationship between valence and the duration of the song.
+        """)
     except:
         col1.write("Problem with valence_popularity_regression graph")
     
